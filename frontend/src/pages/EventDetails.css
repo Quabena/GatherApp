@@ -1,0 +1,26 @@
+/* Container for the hero section */
+.hero-section {
+  position: relative;
+  height: 24rem; /* same as Tailwind's h-96 */
+  overflow: hidden;
+}
+
+/* Style for the hero image */
+.hero-section img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: relative;
+  z-index: 0;
+}
+
+/* Overlay that darkens the image */
+.hero-overlay {
+  position: absolute;
+  inset: 0; /* shorthand for top: 0; right: 0; bottom: 0; left: 0; */
+  background-color: rgba(0, 0, 0, 0.5); /* 50% black overlay */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}

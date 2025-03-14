@@ -1,0 +1,12 @@
+#!/bin/bash
+
+mkdir backend
+cd backend
+npm init -y
+npm install express
+npm install mongoose
+npm install jsonwebtoken
+npm install cors
+npm install dotenv
+
+mkdir controllers models routes utils
