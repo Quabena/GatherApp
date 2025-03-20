@@ -30,8 +30,7 @@ const startServer = async () => {
       throw new Error("MONGO_URI is not defined in environment variables.");
     }
     await mongoose.connect(MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+      maxPoolSize: 10, // Maximum number of simultaneous connections in the connection pool
     });
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
@@ -43,14 +42,3 @@ const startServer = async () => {
 };
 
 startServer();
-
-// Connecting to MongoDB
-// mongoose.connect(MONGO_URI).then(() => {
-//     console.log('Connected to MongoDB');
-//     // Starting the Server
-//     app.listen(PORT, () => {
-//         console.log(`Server running on port ${PORT}`);
-//     });
-// }).catch((err) => {
-//     console.log('Error connecting to MongoDB:', err);
-// });

@@ -25,24 +25,32 @@ const EventCard = ({ event, userLocation }) => {
   return (
     <Link
       to={`/event/${event.id}`}
-      className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200"
+      className="relative bg-white rounded-2xl shadow-md overflow-hidden transform transition-transform duration-300 hover:scale-105 hover:shadow-lg"
     >
-      <div className="flex">
+      {/* Event Image */}
+      <div className="relative">
         <img
           src={event.image}
           alt={event.title}
-          className="w-32 h-32 object-cover rounded-l-xl"
+          className="w-full h-56 object-cover"
         />
-        <div className="p-4">
-          <h3 className="text-xl font-semibold mb-2">{event.title}</h3>
-          <div className="flex items-center text-gray-600 mb-2">
-            <FiCalendar className="mr-2" />
-            <span>{new Date(event.date).toLocaleDateString()}</span>
-          </div>
-          <div className="flex items-center text-gray-600">
-            <FiMapPin className="mr-2" />
-            <span>{calculateDistance(userLocation, event.coordinates)}</span>
-          </div>
+        <span className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 rounded-full text-xs uppercase">
+          {event.category}
+        </span>
+      </div>
+
+      {/* Event Details */}
+      <div className="p-5">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate">
+          {event.title}
+        </h3>
+        <div className="flex items-center text-gray-500 text-sm mb-2">
+          <FiCalendar className="mr-2" />
+          <span>{new Date(event.date).toLocaleDateString()}</span>
+        </div>
+        <div className="flex items-center text-gray-500 text-sm">
+          <FiMapPin className="mr-2" />
+          <span>{calculateDistance(userLocation, event.coordinates)}</span>
         </div>
       </div>
     </Link>

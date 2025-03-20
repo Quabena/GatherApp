@@ -66,7 +66,9 @@ const eventSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Creating geospatial index
-eventSchema.index({ coordinates: "2dsphere" });
+// Creating indexes for performance optimization
+eventSchema.index({ coordinates: "2dsphere" }); // Geospatial index
+eventSchema.index({ category: 1, date: 1 }); // For category/date filters
+eventSchema.index({ price: 1 }); // For price sorting
 
 export default mongoose.model("Event", eventSchema);

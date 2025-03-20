@@ -9,16 +9,17 @@ import {
 } from "react-icons/fi";
 import { GoogleMap, Marker, useLoadScript } from "@react-google-maps/api";
 import Button from "../components/Button/Button";
+import { LoremIpsum } from "lorem-ipsum";
 import "./EventDetails.css";
 
+const lorem = new LoremIpsum();
 // Mock event data (replace with API call in Phase 3)
 const mockEvent = {
   id: 1,
   title: "Local Music Festival",
   date: "2023-10-15T19:00:00",
   location: "Ratray Park, Kumasi",
-  description:
-    "Join us for an unforgettable evening of live music featuring top artists from around the world!",
+  description: lorem.generateParagraphs(3),
   organizer: "Celebrity Innovations Group (CIG)",
   image: "https://picsum.photos/1920/1080?random",
   price: "Free",
@@ -85,7 +86,7 @@ const EventDetailsPage = () => {
             <Button variant="primary">
               {event.price === "Free"
                 ? "Get Free Tickets"
-                : `Buy Tickets ($${event.price})`}
+                : `Buy Tickets (₵${event.price})`}
             </Button>
           </div>
         </div>

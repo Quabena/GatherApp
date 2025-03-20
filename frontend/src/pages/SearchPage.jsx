@@ -158,7 +158,7 @@ const SearchPage = () => {
             {/* Price Filter */}
             <div className="mb-6">
               <label className="block text-sm font-medium mb-2">
-                Price Range: GHS ${filters.priceRange[0]} - $
+                Price Range: GH₵ {filters.priceRange[0]} -{" "}
                 {filters.priceRange[1]}
               </label>
               <input

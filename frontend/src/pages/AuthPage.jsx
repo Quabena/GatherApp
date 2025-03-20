@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axiosInstance from "../api/axios";
 import {
   FiUser,
   FiMail,
   FiLock,
   FiFacebook,
-  FiTwitter,
-  FiGithub,
+  FiX,
   FiInstagram,
 } from "react-icons/fi";
 import Button from "../components/Button/Button";
@@ -54,21 +54,30 @@ const AuthPage = () => {
 
     setLoading(true);
     try {
-      // Simulating API call (to be replaced later)
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const endpoint = isLogin ? "/auth/login" : "/auth/register";
+      const requestData = isLogin
+        ? { email: formData.email, password: formData.password }
+        : formData;
+
+      const { data } = await axiosInstance.post(endpoint, requestData);
 
       if (isLogin) {
-        await login({ email: formData.email, password: formData.password });
-      } else {
-        // Simulating registration
-        console.log("Registration: data", formData);
+        await login(data);
       }
-
       navigate("/dashboard");
-    } catch (error) {
-      setErrors({ general: error.message || "Something went wrong" });
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      if (err.response?.data?.errors) {
+        setErrors(
+          err.response.data.errors.reduce((acc, error) => {
+            acc.general = error;
+            return acc;
+          }, {})
+        );
+      } else {
+        setErrors({
+          general: err.response?.data?.message || "Authentication failed",
+        });
+      }
     }
   };
 
@@ -227,7 +236,7 @@ const AuthPage = () => {
             <FiFacebook className="text-blue-600" />
           </Button>
           <Button variant="outline" className="w-full">
-            <FiTwitter className="text-blue-600" />
+            <FiX className="text-blue-600" />
           </Button>
           <Button variant="outline" className="w-full">
             <FiInstagram className="text-blue-600" />
