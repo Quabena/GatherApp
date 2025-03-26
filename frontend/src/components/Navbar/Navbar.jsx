@@ -10,7 +10,11 @@ const Navbar = ({ setShowSearch }) => {
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center space-x-2">
-          <img src="/logo.png" alt="GatherApp Logo" className="h-10 w-auto" />
+          <img
+            src="/images/logo.png"
+            alt="GatherApp Logo"
+            className="h-10 w-auto"
+          />
           <span className="text-3xl font-extrabold text-blue-600">
             GatherApp
           </span>

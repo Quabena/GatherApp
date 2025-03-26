@@ -1,31 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FiSearch, FiSliders, FiX } from "react-icons/fi";
 import EventList from "../components/EventList/EventList";
 import Button from "../components/Button/Button";
-
-// Mock data (replace with API data in Phase 3)
-const allEvents = [
-  {
-    id: 1,
-    title: "Jazz Night Live",
-    date: "2023-11-05",
-    location: "SG Mall, Kumasi",
-    category: "Music",
-    price: 100,
-    distance: 2.5,
-    image: "https://picsum.photos/1920/1080?random",
-  },
-  {
-    id: 2,
-    title: "ALX Tech Startup Workshop",
-    date: "2023-11-12",
-    location: "Tech Hub, Accra",
-    category: "Workshop",
-    price: 0,
-    distance: 5.1,
-    image: "https://picsum.photos/1920/1080?random",
-  },
-];
+import axios from "axios";
 
 const SearchPage = () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -36,22 +13,47 @@ const SearchPage = () => {
     priceRange: [0, 100],
     distance: "any",
   });
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Filtering Evenst
-  const filteredEvents = allEvents.filter((event) => {
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get("http://localhost:5000/api/events", {
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        setEvents(response.data.events);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching events:", err);
+        setError(err.response?.data?.message || "Failed to fetch events");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  // Filtering Events
+  const filteredEvents = events.filter((event) => {
     const matchesSearch =
       event.title.toLowerCase().includes(filters.searchQuery.toLowerCase()) ||
       event.location.toLowerCase().includes(filters.searchQuery.toLowerCase());
 
     const matchesCategory =
-      filters.category == "all" || event.category === filters.category;
-    const matchesDate = !filters.date || event.date === filters.date;
+      filters.category === "all" || event.category === filters.category;
+    const matchesDate = !filters.date || event.date.includes(filters.date);
     const matchesPrice =
       event.price >= filters.priceRange[0] &&
       event.price <= filters.priceRange[1];
-    const matchesDistance =
-      filters.distance === "any" ||
-      event.distance <= parseInt(filters.distance);
+    // Note: Distance filtering would require actual location data
+    const matchesDistance = true; // Temporary since we don't have distance data from API
 
     return (
       matchesSearch &&
@@ -75,6 +77,33 @@ const SearchPage = () => {
       distance: "any",
     });
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading events...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -108,7 +137,7 @@ const SearchPage = () => {
           </div>
         </div>
 
-        {/* Filters and Resutls */}
+        {/* Filters and Results */}
         <div className="grid md:grid-cols-4 gap-8">
           {/* Filters Sidebar */}
           <div
@@ -138,9 +167,20 @@ const SearchPage = () => {
                 <option value="all">All Categories</option>
                 <option value="Music">Music</option>
                 <option value="Tech">Tech</option>
-                <option value="Entertainment">Entertainment</option>
+                <option value="Movie">Movie</option>
+                <option value="Art">Art</option>
                 <option value="Sports">Sports</option>
-                <option value="all">All Categories</option>
+                <option value="Workshop">Workshop</option>
+                <option value="History">History</option>
+                <option value="Food">Food</option>
+                <option value="Culture">Culture</option>
+                <option value="Festival">Festival</option>
+                <option value="Fun-Games">Fun-Games</option>
+                <option value="Fashion">Fashion</option>
+                <option value="Adventure">Adventure</option>
+                <option value="Church">Church</option>
+                <option value="Business">Business</option>
+                <option value="General Gathering">General Gathering</option>
               </select>
             </div>
 
@@ -189,7 +229,7 @@ const SearchPage = () => {
                 <option value="2">Within 2 Miles</option>
                 <option value="5">Within 5 Miles</option>
                 <option value="10">Within 10 Miles</option>
-                <option value="25">Within 20 Miels</option>
+                <option value="25">Within 20 Miles</option>
               </select>
             </div>
 
@@ -208,7 +248,6 @@ const SearchPage = () => {
               <span className="text-gray-600">
                 Showing {filteredEvents.length} results
               </span>
-              {/* Sorting Dropdowm to be implemented later */}
               <select className="p-2 border border-gray-300 rounded-lg">
                 <option>Sort by: Newest</option>
                 <option>Sort by: Price</option>

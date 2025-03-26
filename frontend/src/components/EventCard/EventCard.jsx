@@ -1,58 +1,142 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { FiCalendar, FiMapPin } from "react-icons/fi";
+import { Calendar, MapPin, Users, Clock, Heart, Share2 } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
 
-// Distance Calculation
-const calculateDistance = (userLocation, eventLocation) => {
-  if (!userLocation || !eventLocation) return "Distance unavailable";
+const EventCard = ({ event }) => {
+  const [isLiked, setIsLiked] = useState(false);
 
-  const R = 6371; // Earth radius in km
-  const dLat = (eventLocation.lat - userLocation.lat) * (Math.PI / 180);
-  const dLon = (eventLocation.lng - userLocation.lng) * (Math.PI / 180);
+  // Format date and time
+  const eventDate = new Date(event.date);
+  const formattedDate = format(eventDate, "MMM d, yyyy");
+  const formattedTime = format(eventDate, "h:mm a");
+  const timeFromNow = formatDistanceToNow(eventDate, { addSuffix: true });
 
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(userLocation.lat * (Math.PI / 180)) *
-      Math.cos(eventLocation.lat * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+  // Calculate price display
+  const priceDisplay = event.price === 0 ? "Free" : `GH₵${event.price}`;
 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return `${Math.round(c * 100)} km away`;
-};
+  // Handle share click
+  const handleShare = (e) => {
+    e.preventDefault(); // Prevent navigation
+    if (navigator.share) {
+      navigator
+        .share({
+          title: event.title,
+          text: `Check out this event: ${event.title}`,
+          url: window.location.href,
+        })
+        .catch(console.error);
+    }
+  };
 
-const EventCard = ({ event, userLocation }) => {
+  // Handle like click
+  const handleLike = (e) => {
+    e.preventDefault(); // Prevent navigation
+    setIsLiked(!isLiked);
+  };
+
   return (
     <Link
-      to={`/event/${event.id}`}
-      className="relative bg-white rounded-2xl shadow-md overflow-hidden transform transition-transform duration-300 hover:scale-105 hover:shadow-lg"
+      to={`/event/${event._id}`}
+      className="group relative bg-white rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
     >
-      {/* Event Image */}
-      <div className="relative">
+      {/* Image Container */}
+      <div className="relative aspect-[16/9] overflow-hidden">
         <img
-          src={event.image}
+          src={
+            event.image ||
+            "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80"
+          }
           alt={event.title}
-          className="w-full h-56 object-cover"
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
-        <span className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 rounded-full text-xs uppercase">
+
+        {/* Category Badge */}
+        <span className="absolute top-4 left-4 bg-blue-600/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide">
           {event.category}
         </span>
+
+        {/* Price Badge */}
+        <span className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-medium">
+          {priceDisplay}
+        </span>
+
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
 
-      {/* Event Details */}
+      {/* Content */}
       <div className="p-5">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate">
+        {/* Title */}
+        <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 mb-3 group-hover:text-blue-600 transition-colors">
           {event.title}
         </h3>
-        <div className="flex items-center text-gray-500 text-sm mb-2">
-          <FiCalendar className="mr-2" />
-          <span>{new Date(event.date).toLocaleDateString()}</span>
+
+        {/* Meta Information */}
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center text-gray-600">
+            <Calendar className="w-4 h-4 mr-2" />
+            <span>{formattedDate}</span>
+          </div>
+
+          <div className="flex items-center text-gray-600">
+            <Clock className="w-4 h-4 mr-2" />
+            <span>{formattedTime}</span>
+            <span className="ml-2 text-xs text-gray-500">({timeFromNow})</span>
+          </div>
+
+          <div className="flex items-center text-gray-600">
+            <MapPin className="w-4 h-4 mr-2" />
+            <span className="truncate">{event.location}</span>
+          </div>
+
+          {event.attendees && (
+            <div className="flex items-center text-gray-600">
+              <Users className="w-4 h-4 mr-2" />
+              <span>{event.attendees} attending</span>
+            </div>
+          )}
         </div>
-        <div className="flex items-center text-gray-500 text-sm">
-          <FiMapPin className="mr-2" />
-          <span>{calculateDistance(userLocation, event.coordinates)}</span>
+
+        {/* Action Buttons */}
+        <div className="flex justify-end items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+          <button
+            onClick={handleLike}
+            className={`p-2 rounded-full transition-colors ${
+              isLiked
+                ? "text-red-500 bg-red-50 hover:bg-red-100"
+                : "text-gray-400 hover:text-red-500 hover:bg-gray-100"
+            }`}
+          >
+            <Heart
+              className="w-5 h-5"
+              fill={isLiked ? "currentColor" : "none"}
+            />
+          </button>
+
+          <button
+            onClick={handleShare}
+            className="p-2 rounded-full text-gray-400 hover:text-blue-500 hover:bg-gray-100 transition-colors"
+          >
+            <Share2 className="w-5 h-5" />
+          </button>
         </div>
       </div>
+
+      {/* Status Indicator - Optional */}
+      {event.status && (
+        <div
+          className={`absolute top-0 right-6 px-3 py-1 rounded-b-lg text-xs font-medium ${
+            event.status === "live"
+              ? "bg-green-500 text-white"
+              : event.status === "upcoming"
+              ? "bg-yellow-500 text-white"
+              : "bg-gray-500 text-white"
+          }`}
+        >
+          {event.status}
+        </div>
+      )}
     </Link>
   );
 };

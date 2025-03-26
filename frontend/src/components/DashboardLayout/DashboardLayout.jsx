@@ -7,6 +7,7 @@ import {
   FiLogOut,
   FiMenu,
   FiX,
+  FiActivity,
 } from "react-icons/fi";
 
 const DashboardLayout = () => {
@@ -43,6 +44,12 @@ const DashboardLayout = () => {
 
           {/* Navigation Links */}
           <nav className="space-y-4">
+            <Link
+              to="/dashboard"
+              className="flex items-center text-gray-700 hover:text-blue-600 p-3 rounded-lg hover:bg-blue-50 transition duration-200"
+            >
+              <FiActivity className="mr-3" /> Create Event
+            </Link>
             <Link
               to="/dashboard"
               className="flex items-center text-gray-700 hover:text-blue-600 p-3 rounded-lg hover:bg-blue-50 transition duration-200"

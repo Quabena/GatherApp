@@ -1,103 +1,168 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { Search } from "lucide-react";
 import Navbar from "../components/Navbar/Navbar";
 import SearchFilters from "../components/SearchFilters/SearchFilters";
 import EventList from "../components/EventList/EventList";
 import Map from "../components/Map/Map";
-
-const mockEvents = [
-  {
-    id: 1,
-    title: "Local Music Festival",
-    date: "2023-10-15",
-    location: "Ratray Park, Kumasi",
-    category: "Entertainment",
-    image: "https://picsum.photos/1920/1080?random=1",
-  },
-  {
-    id: 2,
-    title: "Telecel Ghana Music Awards",
-    date: "2024-11-14",
-    location: "Accra International Conference Center, Accra",
-    category: "Entertainment",
-    image: "https://picsum.photos/1920/1080?random=2",
-  },
-  {
-    id: 3,
-    title: "Tech Startup Workshop",
-    date: "2024-12-27",
-    location: "ALX Tech Hub, Accra",
-    category: "Tech",
-    image: "https://picsum.photos/1920/1080?random=3",
-  },
-  {
-    id: 1,
-    title: "Local Music Festival",
-    date: "2023-10-15",
-    location: "Ratray Park, Kumasi",
-    category: "Entertainment",
-    image: "https://picsum.photos/1920/1080?random=4",
-  },
-  {
-    id: 2,
-    title: "Telecel Ghana Music Awards",
-    date: "2024-11-14",
-    location: "Accra International Conference Center, Accra",
-    category: "Entertainment",
-    image: "https://picsum.photos/1920/1080?random=5",
-  },
-  {
-    id: 3,
-    title: "Tech Startup Workshop",
-    date: "2024-12-27",
-    location: "ALX Tech Hub, Accra",
-    category: "Tech",
-    image: "https://picsum.photos/1920/1080?random=6",
-  },
-];
+import Loader from "../components/Loader/Loader";
 
 const HighlightEvents = ({ events }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [shuffledEvents, setShuffledEvents] = useState([]);
+  const navigate = useNavigate();
 
+  // Shuffle events
+  useEffect(() => {
+    const shuffleArray = (array) => {
+      const shuffled = [...array];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    };
+
+    setShuffledEvents(shuffleArray(events));
+  }, [events]);
+
+  // Infinite scroll effect
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % events.length);
+      setCurrentIndex((prevIndex) => {
+        const nextIndex = (prevIndex + 1) % shuffledEvents.length;
+        // When reaching the end, re-shuffle the events
+        if (nextIndex === 0) {
+          setShuffledEvents((prev) => {
+            const newShuffle = [...prev];
+            for (let i = newShuffle.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [newShuffle[i], newShuffle[j]] = [newShuffle[j], newShuffle[i]];
+            }
+            return newShuffle;
+          });
+        }
+        return nextIndex;
+      });
     }, 3000);
     return () => clearInterval(interval);
-  }, [events.length]);
+  }, [shuffledEvents.length]);
+
+  const handleEventClick = (eventId) => {
+    navigate(`/event/${eventId}`);
+  };
 
   return (
-    <div className="relative w-full h-[400px] overflow-hidden">
+    <div className="relative w-full h-[400px] overflow-hidden rounded-lg">
       <div
         className="absolute inset-0 flex transition-transform ease-in-out duration-1000"
         style={{ transform: `translateX(-${currentIndex * 100}%)` }}
       >
-        {events.map((event) => (
-          <div key={event.id} className="w-full flex-shrink-0 relative">
+        {shuffledEvents.map((event) => (
+          <div
+            key={event._id}
+            className="w-full flex-shrink-0 relative cursor-pointer group"
+            onClick={() => handleEventClick(event._id)}
+          >
             <img
-              src={event.image}
+              src={event.image || "https://picsum.photos/1920/1080"}
               alt={event.title}
-              className="w-full h-[400px] object-cover rounded-lg shadow-lg"
+              className="w-full h-[400px] object-cover shadow-lg transition-transform duration-300 group-hover:scale-105"
             />
-            <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-4">
-              <h3 className="text-lg font-bold">{event.title}</h3>
-              <p className="text-sm">
-                {event.date} - {event.location}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent text-white p-6">
+              <h3 className="text-xl font-bold mb-2">{event.title}</h3>
+              <p className="text-sm opacity-90">
+                {new Date(event.date).toLocaleDateString()} - {event.location}
               </p>
             </div>
           </div>
+        ))}
+      </div>
+
+      {/* Navigation Dots */}
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+        {shuffledEvents.map((_, index) => (
+          <button
+            key={index}
+            className={`w-2 h-2 rounded-full transition-all ${
+              index === currentIndex ? "bg-white w-4" : "bg-white/50"
+            }`}
+            onClick={() => setCurrentIndex(index)}
+          />
         ))}
       </div>
     </div>
   );
 };
 
+const MapSearchBar = ({ onSearch }) => {
+  const [query, setQuery] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSearch(query);
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="absolute top-4 left-4 right-4 z-10 max-w-md mx-auto"
+    >
+      <div className="relative">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search for a location..."
+          className="w-full px-4 py-2 pl-10 pr-12 rounded-lg border border-gray-300 shadow-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <button
+          type="submit"
+          className="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors"
+        >
+          Search
+        </button>
+      </div>
+    </form>
+  );
+};
+
 const HomePage = () => {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedDate, setSelectedDate] = useState("");
   const [showSearch, setShowSearch] = useState(false);
-
+  const [mapCenter, setMapCenter] = useState(null);
+  const navigate = useNavigate();
   const searchRef = useRef(null);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get("http://localhost:5000/api/events", {
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        setEvents(response.data.events);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching events:", err);
+        setError(err.response?.data?.message || "Failed to fetch events");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -115,7 +180,24 @@ const HomePage = () => {
     };
   }, [showSearch]);
 
-  const filteredEvents = mockEvents.filter((event) => {
+  const handleMapSearch = async (query) => {
+    try {
+      const response = await axios.get(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+          query
+        )}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`
+      );
+
+      if (response.data.results.length > 0) {
+        const { lat, lng } = response.data.results[0].geometry.location;
+        setMapCenter({ lat, lng });
+      }
+    } catch (error) {
+      console.error("Error searching location:", error);
+    }
+  };
+
+  const filteredEvents = events.filter((event) => {
     const matchesSearch =
       event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.location.toLowerCase().includes(searchQuery.toLowerCase());
@@ -123,10 +205,26 @@ const HomePage = () => {
     const matchesCategory =
       selectedCategory === "all" || event.category === selectedCategory;
 
-    const matchesDate = !selectedDate || event.date === selectedDate;
+    const matchesDate =
+      !selectedDate ||
+      new Date(event.date).toISOString().split("T")[0] === selectedDate;
 
     return matchesSearch && matchesCategory && matchesDate;
   });
+
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader />
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-600">
+        {error}
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
@@ -144,7 +242,7 @@ const HomePage = () => {
 
       {/* Highlight Events Slider */}
       <div className="max-w-7xl mx-auto px-6 py-10">
-        <HighlightEvents events={mockEvents} />
+        <HighlightEvents events={events} />
       </div>
 
       {/* Search Bar */}
@@ -173,20 +271,28 @@ const HomePage = () => {
             Featured Events
           </h2>
           {filteredEvents.length > 0 ? (
-            <EventList events={filteredEvents} />
+            <EventList
+              events={filteredEvents}
+              onEventClick={(eventId) => navigate(`/event/${eventId}`)}
+            />
           ) : (
             <p className="text-gray-500">No events found.</p>
           )}
         </div>
       </div>
 
-      {/* Map Section (Moved Below) */}
+      {/* Map Section */}
       <div className="max-w-7xl mx-auto px-6 py-10">
         <h2 className="text-2xl font-semibold text-gray-700 mb-4">
           Explore Events on the Map
         </h2>
-        <div className="rounded-2xl shadow-xl overflow-hidden">
-          <Map events={filteredEvents} />
+        <div className="rounded-2xl shadow-xl overflow-hidden relative">
+          <MapSearchBar onSearch={handleMapSearch} />
+          <Map
+            events={filteredEvents}
+            onMarkerClick={(eventId) => navigate(`/event/${eventId}`)}
+            center={mapCenter}
+          />
         </div>
       </div>
     </div>

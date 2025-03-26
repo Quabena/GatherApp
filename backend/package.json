@@ -20,6 +20,7 @@
     "ioredis": "^5.6.0",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.483.0",
     "mongoose": "^8.12.1",
     "nodemon": "^3.1.9",
     "redis": "^4.7.0",
