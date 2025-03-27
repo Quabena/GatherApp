@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Search } from "lucide-react";
@@ -10,42 +10,27 @@ import Loader from "../components/Loader/Loader";
 
 const HighlightEvents = ({ events }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [shuffledEvents, setShuffledEvents] = useState([]);
   const navigate = useNavigate();
 
-  // Shuffle events
-  useEffect(() => {
-    const shuffleArray = (array) => {
-      const shuffled = [...array];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      return shuffled;
-    };
-
-    setShuffledEvents(shuffleArray(events));
+  // Memoize shuffled events to prevent unnecessary re-renders
+  const shuffledEvents = useMemo(() => {
+    if (!events.length) return [];
+    const array = [...events];
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
   }, [events]);
 
-  // Infinite scroll effect
+  // Auto-rotate events
   useEffect(() => {
+    if (shuffledEvents.length === 0) return;
+
     const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => {
-        const nextIndex = (prevIndex + 1) % shuffledEvents.length;
-        // When reaching the end, re-shuffle the events
-        if (nextIndex === 0) {
-          setShuffledEvents((prev) => {
-            const newShuffle = [...prev];
-            for (let i = newShuffle.length - 1; i > 0; i--) {
-              const j = Math.floor(Math.random() * (i + 1));
-              [newShuffle[i], newShuffle[j]] = [newShuffle[j], newShuffle[i]];
-            }
-            return newShuffle;
-          });
-        }
-        return nextIndex;
-      });
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % shuffledEvents.length);
     }, 3000);
+
     return () => clearInterval(interval);
   }, [shuffledEvents.length]);
 
@@ -152,7 +137,6 @@ const HomePage = () => {
           },
         });
         setEvents(response.data.events);
-        setError(null);
       } catch (err) {
         console.error("Error fetching events:", err);
         setError(err.response?.data?.message || "Failed to fetch events");
@@ -197,34 +181,38 @@ const HomePage = () => {
     }
   };
 
-  const filteredEvents = events.filter((event) => {
-    const matchesSearch =
-      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.location.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredEvents = useMemo(() => {
+    return events.filter((event) => {
+      const matchesSearch =
+        event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.location.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesCategory =
-      selectedCategory === "all" || event.category === selectedCategory;
+      const matchesCategory =
+        selectedCategory === "all" || event.category === selectedCategory;
 
-    const matchesDate =
-      !selectedDate ||
-      new Date(event.date).toISOString().split("T")[0] === selectedDate;
+      const matchesDate =
+        !selectedDate ||
+        new Date(event.date).toISOString().split("T")[0] === selectedDate;
 
-    return matchesSearch && matchesCategory && matchesDate;
-  });
+      return matchesSearch && matchesCategory && matchesDate;
+    });
+  }, [events, searchQuery, selectedCategory, selectedDate]);
 
-  if (loading)
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader />
       </div>
     );
+  }
 
-  if (error)
+  if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center text-red-600">
         {error}
       </div>
     );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
@@ -276,7 +264,9 @@ const HomePage = () => {
               onEventClick={(eventId) => navigate(`/event/${eventId}`)}
             />
           ) : (
-            <p className="text-gray-500">No events found.</p>
+            <p className="text-gray-500">
+              No events found matching your search.
+            </p>
           )}
         </div>
       </div>

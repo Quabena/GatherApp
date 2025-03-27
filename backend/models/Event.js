@@ -26,7 +26,7 @@ const eventSchema = new mongoose.Schema(
         default: "Point",
         enum: ["Point"],
       },
-      coordinates: [Number], // (Longitude and latitude)
+      coordinates: [Number],
     },
     category: {
       type: String,
@@ -70,13 +70,44 @@ const eventSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    reviews: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        text: {
+          type: String,
+          required: true,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+    capacity: {
+      type: Number,
+      default: 100,
+    },
+    registeredCount: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );
 
-// Creating indexes for performance optimization
-eventSchema.index({ coordinates: "2dsphere" }); // Geospatial index
-eventSchema.index({ category: 1, date: 1 }); // For category/date filters
-eventSchema.index({ price: 1 }); // For price sorting
+// Indexes
+eventSchema.index({ coordinates: "2dsphere" });
+eventSchema.index({ category: 1, date: 1 });
+eventSchema.index({ price: 1 });
 
 export default mongoose.model("Event", eventSchema);

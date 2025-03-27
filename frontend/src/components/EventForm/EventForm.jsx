@@ -184,7 +184,7 @@ const CreateEventPage = () => {
             {/* Price */}
             <div>
               <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                <DollarSign className="w-4 h-4 mr-2" />
+                <div className="w-4 h-4 mr-2"> ₵ </div>
                 Price
               </label>
               <div className="relative">

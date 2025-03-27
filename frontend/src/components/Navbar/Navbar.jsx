@@ -9,7 +9,7 @@ const Navbar = ({ setShowSearch }) => {
     <nav className="bg-white shadow-md fixed w-full z-50">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center space-x-2">
+        <Link to="/home" className="flex items-center space-x-2">
           <img
             src="/images/logo.png"
             alt="GatherApp Logo"
@@ -22,7 +22,10 @@ const Navbar = ({ setShowSearch }) => {
 
         {/* Desktop Menu */}
         <div className="hidden md:flex space-x-8 text-lg">
-          <Link to="/" className="text-gray-700 hover:text-blue-600 transition">
+          <Link
+            to="/home"
+            className="text-gray-700 hover:text-blue-600 transition"
+          >
             Home
           </Link>
           <Link

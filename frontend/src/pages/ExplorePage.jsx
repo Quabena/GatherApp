@@ -38,19 +38,34 @@ const ExplorePage = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [view, setView] = useState("grid"); // grid or list
-  const [sortBy, setSortBy] = useState("date"); // date, popularity, price
+  const [view, setView] = useState("grid");
+  const [sortBy, setSortBy] = useState("date");
 
   const fetchEvents = useCallback(async () => {
     try {
       setLoading(true);
+      const params = {
+        category: selectedCategory === "All" ? undefined : selectedCategory,
+        status: "upcoming",
+        sort:
+          sortBy === "date"
+            ? "date"
+            : sortBy === "popularity"
+            ? "-attendees"
+            : sortBy === "price"
+            ? "price"
+            : undefined,
+      };
+
       const response = await axios.get("http://localhost:5000/api/events", {
+        params,
         withCredentials: true,
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      setEvents(response.data.events);
+
+      setEvents(response.data.events || []);
       setError(null);
     } catch (err) {
       console.error("Error fetching events:", err);
@@ -58,31 +73,15 @@ const ExplorePage = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedCategory, sortBy]);
 
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
 
-  const filteredEvents = events.filter(
-    (event) =>
-      (selectedCategory === "All" || event.category === selectedCategory) &&
-      event.title.toLowerCase().includes(search.toLowerCase())
+  const filteredEvents = events.filter((event) =>
+    event.title.toLowerCase().includes(search.toLowerCase())
   );
-
-  // Sort events based on selected criteria
-  const sortedEvents = [...filteredEvents].sort((a, b) => {
-    switch (sortBy) {
-      case "date":
-        return new Date(a.date) - new Date(b.date);
-      case "popularity":
-        return (b.attendees || 0) - (a.attendees || 0);
-      case "price":
-        return (a.price || 0) - (b.price || 0);
-      default:
-        return 0;
-    }
-  });
 
   if (loading) {
     return (
@@ -210,7 +209,7 @@ const ExplorePage = () => {
 
         {view === "grid" ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedEvents.map((event) => (
+            {filteredEvents.map((event) => (
               <Link
                 key={event._id}
                 to={`/event/${event._id}`}
@@ -226,7 +225,9 @@ const ExplorePage = () => {
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                   />
                   <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs">
-                    {event.price === 0 ? "Free" : `GH₵${event.price}.00`}
+                    {event.price === 0 || !event.price
+                      ? "Free"
+                      : `GH₵${event.price}.00`}
                   </div>
                 </div>
 
@@ -249,12 +250,10 @@ const ExplorePage = () => {
                       <MapPin className="w-4 h-4 mr-2" />
                       <span className="truncate">{event.location}</span>
                     </div>
-                    {event.attendees && (
-                      <div className="flex items-center text-gray-600">
-                        <Users className="w-4 h-4 mr-2" />
-                        <span>{event.attendees} attending</span>
-                      </div>
-                    )}
+                    <div className="flex items-center text-gray-600">
+                      <Users className="w-4 h-4 mr-2" />
+                      <span>{event.attendees?.length || 0} attending</span>
+                    </div>
                   </div>
 
                   <div className="mt-6 flex items-center justify-between">
@@ -272,7 +271,7 @@ const ExplorePage = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {sortedEvents.map((event) => (
+            {filteredEvents.map((event) => (
               <Link
                 key={event._id}
                 to={`/event/${event._id}`}
@@ -295,7 +294,9 @@ const ExplorePage = () => {
                         {event.title}
                       </h3>
                       <span className="bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs">
-                        {event.price === 0 ? "Free" : `₵${event.price}`}
+                        {event.price === 0 || !event.price
+                          ? "Free"
+                          : `GH₵${event.price}.00`}
                       </span>
                     </div>
 
@@ -313,12 +314,10 @@ const ExplorePage = () => {
                         <MapPin className="w-4 h-4 mr-2" />
                         <span className="truncate">{event.location}</span>
                       </div>
-                      {event.attendees && (
-                        <div className="flex items-center text-gray-600">
-                          <Users className="w-4 h-4 mr-2" />
-                          <span>{event.attendees} attending</span>
-                        </div>
-                      )}
+                      <div className="flex items-center text-gray-600">
+                        <Users className="w-4 h-4 mr-2" />
+                        <span>{event.attendees?.length || 0} attending</span>
+                      </div>
                     </div>
 
                     <div className="mt-4 flex items-center justify-between">
@@ -337,7 +336,7 @@ const ExplorePage = () => {
           </div>
         )}
 
-        {sortedEvents.length === 0 && (
+        {filteredEvents.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500">
               No events match your search criteria.

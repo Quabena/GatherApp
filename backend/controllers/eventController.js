@@ -38,6 +38,7 @@ export const getEvents = async (req, res) => {
       sort,
       page = 1,
       limit = 10,
+      status, // Add status filter
     } = req.query;
 
     // Converting to numbers
@@ -48,7 +49,17 @@ export const getEvents = async (req, res) => {
     // Constructing the filters
     const filters = {};
     if (category) filters.category = category;
-    if (date) filters.date = { $gte: new Date(date) };
+
+    // Handle date filtering based on status
+    if (status === "ended") {
+      filters.date = { $lt: new Date() };
+    } else if (status === "upcoming") {
+      filters.date = { $gte: new Date() };
+    } else if (date) {
+      // Keep existing date filter if no status is specified
+      filters.date = { $gte: new Date(date) };
+    }
+
     if (minPrice || maxPrice) {
       filters.price = {};
       if (minPrice) filters.price.$gte = parseFloat(minPrice);
@@ -66,14 +77,14 @@ export const getEvents = async (req, res) => {
       };
     }
 
-    // Generating a unique cache key based on query params
-    const cacheKey = `events_${category || "all"}_${date || "all"}_${
-      minPrice || "any"
-    }_${maxPrice || "any"}_${longitude || "any"}_${latitude || "any"}_${
-      radius || "any"
-    }_${sort || "default"}_page${pageNum}_limit${limitNum}`;
+    // Generating a unique cache key including status
+    const cacheKey = `events_${status || "all"}_${category || "all"}_${
+      date || "all"
+    }_${minPrice || "any"}_${maxPrice || "any"}_${longitude || "any"}_${
+      latitude || "any"
+    }_${radius || "any"}_${sort || "default"}_page${pageNum}_limit${limitNum}`;
 
-    // Retrieving cached data if available
+    // Rest of the function remains the same...
     const data = await getOrSetCache(
       cacheKey,
       async () => {
@@ -85,7 +96,6 @@ export const getEvents = async (req, res) => {
           .sort(sort ? sort.split(",").join(" ") : "-createdAt")
           .lean();
 
-        // Counting only if not cached
         const [events, total] = await Promise.all([
           query,
           Event.countDocuments(filters),
@@ -101,7 +111,7 @@ export const getEvents = async (req, res) => {
         };
       },
       300
-    ); // Setting cache expiry to 300 seconds (5 minutes)
+    );
 
     res.status(200).json(data);
   } catch (error) {
@@ -159,6 +169,169 @@ export const updateEvent = async (req, res) => {
   }
 };
 
+// Register for event
+export const registerForEvent = async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) throw new NotFoundError("Event not found");
+
+    // Check if already registered
+    if (event.attendees.includes(req.user._id)) {
+      throw new Error("You're already registered for this event");
+    }
+
+    // Check capacity
+    if (event.capacity && event.attendees.length >= event.capacity) {
+      throw new Error("This event has reached maximum capacity");
+    }
+
+    // Add registration
+    event.attendees.push(req.user._id);
+    event.registeredCount = event.attendees.length;
+    await event.save();
+
+    res.status(200).json({
+      status: "success",
+      event,
+    });
+  } catch (error) {
+    res.status(error.statusCode || 400).json({ message: error.message });
+  }
+};
+
+// Controller function for unregistering
+export const unregisterFromEvent = async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) throw new NotFoundError("Event not found");
+
+    // Check if user is registered
+    if (!event.attendees.includes(req.user._id)) {
+      throw new Error("You're not registered for this event");
+    }
+
+    // Remove registration
+    event.attendees = event.attendees.filter(
+      (attendee) => attendee.toString() !== req.user._id.toString()
+    );
+    event.registeredCount = event.attendees.length;
+    await event.save();
+
+    res.status(200).json({
+      status: "success",
+      message: "Successfully unregistered from event",
+      eventId: req.params.id,
+    });
+  } catch (error) {
+    res.status(error.statusCode || 400).json({ message: error.message });
+  }
+};
+
+// Like event
+export const likeEvent = async (req, res) => {
+  try {
+    const event = await Event.findByIdAndUpdate(
+      req.params.id,
+      {
+        $addToSet: { likes: req.user._id }, // Prevent duplicates
+        $inc: { likeCount: 1 },
+      },
+      { new: true }
+    );
+
+    res.status(200).json({
+      status: "success",
+      likes: event.likes.length,
+    });
+  } catch (error) {
+    res.status(error.statusCode || 400).json({ message: error.message });
+  }
+};
+
+// Unlike event
+export const unlikeEvent = async (req, res) => {
+  try {
+    const event = await Event.findByIdAndUpdate(
+      req.params.id,
+      {
+        $pull: { likes: req.user._id },
+        $inc: { likeCount: -1 },
+      },
+      { new: true }
+    );
+
+    res.status(200).json({
+      status: "success",
+      likes: event.likes.length,
+    });
+  } catch (error) {
+    res.status(error.statusCode || 400).json({ message: error.message });
+  }
+};
+
+// Get event reviews
+export const getEventReviews = async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id)
+      .populate({
+        path: "reviews.user",
+        select: "name email",
+      })
+      .select("reviews");
+
+    if (!event) {
+      throw new NotFoundError("Event not found");
+    }
+
+    res.status(200).json({
+      status: "success",
+      reviews: event.reviews,
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.message });
+  }
+};
+
+// Add event review
+export const addEventReview = async (req, res) => {
+  try {
+    const event = await Event.findByIdAndUpdate(
+      req.params.id,
+      {
+        $push: {
+          reviews: {
+            user: req.user._id,
+            text: req.body.text,
+          },
+        },
+      },
+      { new: true }
+    ).populate({
+      path: "reviews.user",
+      select: "name",
+    });
+
+    if (!event) {
+      throw new NotFoundError("Event not found");
+    }
+
+    // Get the newly added review (last one in the array)
+    const newReview = event.reviews[event.reviews.length - 1];
+
+    res.status(201).json({
+      status: "success",
+      review: {
+        id: newReview._id,
+        text: newReview.text,
+        author: newReview.user.name,
+        timestamp: newReview.createdAt.toLocaleString(),
+      },
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.message });
+  }
+};
+
 // Deleting an event
 export const deleteEvent = async (req, res) => {
   try {
@@ -174,5 +347,23 @@ export const deleteEvent = async (req, res) => {
     res.status(204).json({ status: "success", data: null });
   } catch (error) {
     res.status(error.statusCode || 400).json({ message: error.message });
+  }
+};
+
+// Register Event Controller
+export const getRegisteredEvents = async (req, res) => {
+  try {
+    const events = await Event.find({ attendees: req.user._id })
+      .populate("organizer", "name email")
+      .sort("-date")
+      .lean();
+
+    res.status(200).json({
+      status: "success",
+      results: events.length,
+      events,
+    });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
   }
 };

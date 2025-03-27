@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link /*useNavigate*/ } from "react-router-dom";
 import {
   ArrowLeft,
   Calendar,
@@ -8,19 +8,21 @@ import {
   Mail,
   Send,
   Clock,
-  DollarSign,
   Users,
   Share2,
   Heart,
   MessageSquare,
   Loader2,
   AlertCircle,
+  ArrowRight,
 } from "lucide-react";
 import { GoogleMap, Marker, useLoadScript } from "@react-google-maps/api";
 import axios from "axios";
+import toast from "react-hot-toast";
 
 const EventDetailsPage = () => {
   const { id } = useParams();
+  //const navigate = useNavigate();
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -43,30 +45,37 @@ const EventDetailsPage = () => {
   });
 
   useEffect(() => {
-    const fetchEvent = async () => {
+    const fetchEventData = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(
-          `http://localhost:5000/api/events/${id}`,
-          {
+        const [eventRes, reviewsRes] = await Promise.all([
+          axios.get(`http://localhost:5000/api/events/${id}`, {
             withCredentials: true,
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
             },
-          }
-        );
-        setEvent(response.data.event);
-        setLikeCount(Math.floor(Math.random() * 100) + 50);
-        setError(null);
+          }),
+          axios.get(`http://localhost:5000/api/events/${id}/reviews`, {
+            withCredentials: true,
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }),
+        ]);
+
+        setEvent(eventRes.data.event);
+        setReviews(reviewsRes.data.reviews);
+        setLikeCount(eventRes.data.event.likes || 0);
+        setLiked(eventRes.data.event.userLiked || false);
       } catch (err) {
-        console.error("Error fetching event:", err);
+        console.error("Error fetching data:", err);
         setError(err.response?.data?.message || "Failed to fetch event data");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchEvent();
+    fetchEventData();
   }, [id]);
 
   const handleSubmit = async (e) => {
@@ -81,32 +90,84 @@ const EventDetailsPage = () => {
           withCredentials: true,
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
           },
         }
       );
+
       setRegistrationSuccess(true);
-      setFormData({ name: "", email: "", phone: "", specialRequirements: "" });
+      toast.success("Successfully registered for the event!");
+
+      // Update event data to reflect new registration
+      const updatedEvent = await axios.get(
+        `http://localhost:5000/api/events/${id}`,
+        {
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      setEvent(updatedEvent.data.event);
     } catch (err) {
-      console.error("Registration failed:", err);
-      setError("Registration failed. Please try again.");
+      console.error("Registration error:", err);
+      const errorMessage =
+        err.response?.data?.message || "Registration failed. Please try again.";
+      toast.error(errorMessage);
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleReviewSubmit = (e) => {
+  const handleReviewSubmit = async (e) => {
     e.preventDefault();
     if (!newReview.trim()) return;
 
-    const review = {
-      id: Date.now(),
-      text: newReview,
-      timestamp: new Date().toLocaleString(),
-      author: "Anonymous User",
-    };
+    try {
+      const response = await axios.post(
+        `http://localhost:5000/api/events/${id}/reviews`,
+        { text: newReview },
+        {
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
 
-    setReviews([review, ...reviews]);
-    setNewReview("");
+      setReviews([response.data.review, ...reviews]);
+      setNewReview("");
+      toast.success("Review submitted!");
+    } catch (err) {
+      console.error("Error submitting review:", err);
+      toast.error(err.response?.data?.message || "Failed to submit review");
+    }
+  };
+
+  const handleLike = async () => {
+    try {
+      const endpoint = liked
+        ? `http://localhost:5000/api/events/${id}/unlike`
+        : `http://localhost:5000/api/events/${id}/like`;
+
+      const response = await axios.post(
+        endpoint,
+        {},
+        {
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      setLiked(!liked);
+      setLikeCount(response.data.likes);
+    } catch (err) {
+      console.error("Error toggling like:", err);
+      toast.error(err.response?.data?.message || "Failed to update like");
+    }
   };
 
   const handleShare = async () => {
@@ -233,7 +294,7 @@ const EventDetailsPage = () => {
       {/* Navigation */}
       <div className="max-w-7xl mx-auto px-4 py-6">
         <Link
-          to="/"
+          to="/home"
           className="flex items-center text-gray-600 hover:text-blue-600 transition"
         >
           <ArrowLeft className="w-5 h-5 mr-2" /> Back to Events
@@ -345,6 +406,12 @@ const EventDetailsPage = () => {
                     Thank you for registering. We've sent you a confirmation
                     email with more details.
                   </p>
+                  <Link
+                    to="/dashboard"
+                    className="flex items-center text-green-600 hover:text-blue-600 transition"
+                  >
+                    <ArrowRight className="w-5 h-5 mr-2" /> View Saved Events
+                  </Link>
                 </div>
               ) : eventStatus === "ended" ? (
                 <div className="bg-red-50 p-6 rounded-xl text-red-700">
@@ -436,10 +503,7 @@ const EventDetailsPage = () => {
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-4">
               <button
-                onClick={() => {
-                  setLiked(!liked);
-                  setLikeCount(liked ? likeCount - 1 : likeCount + 1);
-                }}
+                onClick={handleLike}
                 className="flex items-center gap-2 text-gray-600 hover:text-red-500 transition"
               >
                 <Heart
@@ -524,7 +588,7 @@ const EventDetailsPage = () => {
                     </div>
                     <p className="text-gray-700">{review.text}</p>
                     <p className="text-sm text-gray-500 mt-2">
-                      {review.timestamp}
+                      {new Date(review.timestamp).toLocaleString()}
                     </p>
                   </div>
                 ))

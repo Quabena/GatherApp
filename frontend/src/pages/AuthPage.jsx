@@ -64,7 +64,7 @@ const AuthPage = () => {
       if (isLogin) {
         await login(data);
       }
-      navigate("/");
+      navigate("/home");
     } catch (err) {
       if (err.response?.data?.errors) {
         setErrors(

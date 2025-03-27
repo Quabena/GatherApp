@@ -6,7 +6,7 @@ const Footer = () => {
       <div className="container mx-auto px-4 md:px-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Brand Section */}
-          <Link className="space-y-3" to="/">
+          <Link className="space-y-3" to="/home">
             <h2 className="text-xl font-bold text-white">GatherApp</h2>
             <p className="text-sm">Find. Connect. Experience.</p>
           </Link>
@@ -16,7 +16,7 @@ const Footer = () => {
             <h3 className="text-lg font-semibold text-white">Quick Links</h3>
             <ul className="space-y-1 inline-block">
               <li className="inline-block ml-4">
-                <a href="/" className="hover:text-white">
+                <a href="/home" className="hover:text-white">
                   Home
                 </a>
               </li>
@@ -31,7 +31,7 @@ const Footer = () => {
                 </a>
               </li>
               <li className="inline-block ml-4">
-                <a href="/about-us" className="hover:text-white">
+                <a href="/gatherapp/#about" className="hover:text-white">
                   About Us
                 </a>
               </li>
