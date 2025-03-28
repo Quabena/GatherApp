@@ -99,3 +99,32 @@ export const login = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
+
+export const logout = async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken; // Get token from cookies
+    if (!refreshToken) {
+      return res.status(400).json({ message: "No refresh token found" });
+    }
+
+    // Find user and remove the refresh token
+    const user = await User.findOne({ refreshTokens: refreshToken });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Remove the refresh token from the user's stored tokens
+    user.refreshTokens = user.refreshTokens.filter(
+      (token) => token !== refreshToken
+    );
+    await user.save();
+
+    // Clear authentication cookies
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
+
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Logout failed" });
+  }
+};

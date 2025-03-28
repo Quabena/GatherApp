@@ -31,7 +31,7 @@ const Footer = () => {
                 </a>
               </li>
               <li className="inline-block ml-4">
-                <a href="/gatherapp/#about" className="hover:text-white">
+                <a href="/#about" className="hover:text-white">
                   About Us
                 </a>
               </li>

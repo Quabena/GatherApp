@@ -62,8 +62,23 @@ const AuthPage = () => {
       const { data } = await axiosInstance.post(endpoint, requestData);
 
       if (isLogin) {
-        await login(data);
+        // Make sure your backend returns { user, token } structure
+        await login({
+          email: data.user.email,
+          name: data.user.name || data.user.email.split("@")[0],
+          token: data.token,
+        });
+        localStorage.setItem("token", data.token); // Explicitly store token
+      } else {
+        // For registration, you might want to automatically log the user in
+        await login({
+          email: data.user.email,
+          name: data.user.name || data.user.email.split("@")[0],
+          token: data.token,
+        });
+        localStorage.setItem("token", data.token);
       }
+
       navigate("/home");
     } catch (err) {
       if (err.response?.data?.errors) {
@@ -78,6 +93,8 @@ const AuthPage = () => {
           general: err.response?.data?.message || "Authentication failed",
         });
       }
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -32,15 +32,14 @@ const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  // Show loading state while checking authentication
   if (loading) {
     return <FullPageLoader />;
   }
 
-  // Redirect to auth if not authenticated
-  // if (!user) {
-  //   return <Navigate to="/auth" state={{ from: location }} replace />;
-  // }
+  // Redirect to "/auth" if user is not authenticated
+  if (!user) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
 
   return children;
 };
@@ -50,7 +49,6 @@ const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  // Show loading state while checking authentication
   if (loading) {
     return <FullPageLoader />;
   }
@@ -89,14 +87,7 @@ function App() {
 
         {/* Public Routes with Footer */}
         <Route element={<MainLayout />}>
-          <Route
-            path="/home"
-            element={
-              <ProtectedRoute>
-                <HomePage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/home" element={<HomePage />} /> {/* Public Route */}
           <Route
             path="/explore"
             element={
@@ -105,22 +96,9 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/search"
-            element={
-              <ProtectedRoute>
-                <SearchPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/event/:id"
-            element={
-              <ProtectedRoute>
-                <EventDetailsPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/search" element={<SearchPage />} /> {/* Public Route */}
+          <Route path="/event/:id" element={<EventDetailsPage />} />{" "}
+          {/* Public Route */}
         </Route>
 
         {/* Authentication Route */}
