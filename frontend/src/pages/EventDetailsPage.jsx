@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link /*useNavigate*/ } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   Calendar,
@@ -19,10 +19,12 @@ import {
 import { GoogleMap, Marker, useLoadScript } from "@react-google-maps/api";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { useAuth } from "../hooks/useAuth";
 
 const EventDetailsPage = () => {
   const { id } = useParams();
-  //const navigate = useNavigate();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -146,6 +148,12 @@ const EventDetailsPage = () => {
   };
 
   const handleLike = async () => {
+    if (!user) {
+      toast.error("Please sign in to like events");
+      navigate("/auth");
+      return;
+    }
+
     try {
       const endpoint = liked
         ? `http://localhost:5000/api/events/${id}/unlike`
@@ -192,6 +200,45 @@ const EventDetailsPage = () => {
     if (now > endTime) return "ended";
     if (now >= eventDate && now <= endTime) return "ongoing";
     return "upcoming";
+  };
+
+  const renderActionButton = () => {
+    const eventStatus = getEventStatus();
+
+    if (eventStatus === "ended") {
+      return (
+        <button
+          className="px-6 py-3 bg-gray-400 text-white rounded-lg cursor-not-allowed"
+          disabled
+        >
+          Event Ended
+        </button>
+      );
+    }
+
+    if (!user) {
+      return (
+        <div className="text-center">
+          <p className="text-red-500 mb-2">
+            You need to sign in to register for an event!
+          </p>
+          <Link
+            to="/auth"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center"
+          >
+            Sign In / Register
+          </Link>
+        </div>
+      );
+    }
+
+    return (
+      <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center">
+        {event.price === 0
+          ? "Free Event"
+          : `Buy Tickets (GH₵${event.price}.00)`}
+      </button>
+    );
   };
 
   if (loading) {
@@ -266,14 +313,7 @@ const EventDetailsPage = () => {
               </div>
             </div>
             <div className="flex justify-center gap-4">
-              <button
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center"
-                disabled={eventStatus === "ended"}
-              >
-                {event.price === 0
-                  ? "Free Event"
-                  : `Buy Tickets (GH₵${event.price}.00)`}
-              </button>
+              {renderActionButton()}
               <button
                 onClick={handleShare}
                 className="px-4 py-3 bg-white/10 backdrop-blur-sm text-white rounded-lg hover:bg-white/20 transition flex items-center"
@@ -418,6 +458,19 @@ const EventDetailsPage = () => {
                   <h2 className="text-xl font-bold mb-2">Event Ended</h2>
                   <p>This event has already taken place.</p>
                 </div>
+              ) : !user ? (
+                <div className="bg-yellow-50 p-6 rounded-xl text-yellow-700">
+                  <h2 className="text-xl font-bold mb-2">Sign In Required</h2>
+                  <p className="mb-4">
+                    You need to be signed in to register for this event.
+                  </p>
+                  <Link
+                    to="/auth"
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center"
+                  >
+                    Sign In / Register
+                  </Link>
+                </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6 max-w-md">
                   <div>
@@ -558,23 +611,35 @@ const EventDetailsPage = () => {
           {/* Review Section */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h2 className="text-xl font-bold mb-4">Reviews</h2>
-            <form onSubmit={handleReviewSubmit} className="mb-6">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Write a review..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={newReview}
-                  onChange={(e) => setNewReview(e.target.value)}
-                />
-                <button
-                  type="submit"
-                  className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
+
+            {user ? (
+              <form onSubmit={handleReviewSubmit} className="mb-6">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Write a review..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    value={newReview}
+                    onChange={(e) => setNewReview(e.target.value)}
+                  />
+                  <button
+                    type="submit"
+                    className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+                <p className="text-yellow-700">
+                  <Link to="/auth" className="text-blue-600 hover:underline">
+                    Sign in
+                  </Link>{" "}
+                  to leave a review
+                </p>
               </div>
-            </form>
+            )}
 
             <div className="space-y-4">
               {reviews.length > 0 ? (
@@ -594,7 +659,10 @@ const EventDetailsPage = () => {
                 ))
               ) : (
                 <p className="text-center text-gray-500">
-                  No reviews yet. Be the first to review!
+                  No reviews yet.{" "}
+                  {user
+                    ? "Be the first to review!"
+                    : "Sign in to leave a review"}
                 </p>
               )}
             </div>
