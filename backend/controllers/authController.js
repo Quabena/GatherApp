@@ -1,48 +1,65 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
+/**
+ * Generate access and refresh tokens for a user
+ * @param {string} userId - User's ID
+ * @returns {Object} Object containing access and refresh tokens
+ */
 const generateTokens = (userId) => {
+  // Token expiration times
   const accessToken = jwt.sign({ userId }, process.env.JWT_ACCESS_SECRET, {
-    expiresIn: "15m",
+    expiresIn: "1h", // Access token: 1 hour
   });
 
   const refreshToken = jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, {
-    expiresIn: "7d",
+    expiresIn: "7d", // Refresh token: 7 days
   });
 
   return { accessToken, refreshToken };
 };
 
+/**
+ * Handle user registration
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    //Checking if user exists
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: "Invalid email format" });
+    }
+
+    // Check for existing user
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({ message: "Email already registered" });
     }
 
-    // Creating user
+    // Create new user
     const user = await User.create({ name, email, password });
-
-    // Generating tokens
     const { accessToken, refreshToken } = generateTokens(user._id);
 
-    // Saving refresh token
+    // Store refresh token
     user.refreshTokens.push(refreshToken);
     await user.save();
 
-    // Setting HTTP-only cookies
+    // Set secure cookies
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 15 * 60 * 1000, // This will be 15 minutes
+      sameSite: "strict",
+      maxAge: 60 * 60 * 1000, // 1 hour
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
@@ -55,40 +72,41 @@ export const register = async (req, res) => {
   }
 };
 
+/**
+ * Handle user login
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Finding user
+    // Find and validate user
     const user = await User.findOne({ email });
-    if (!user) {
+    if (!user || !(await user.verifyPassword(password))) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Verifying the password
-    const isValidPassword = await user.verifyPassword(password);
-    if (!isValidPassword) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    // Generating tokens
+    // Generate new tokens
     const { accessToken, refreshToken } = generateTokens(user._id);
 
-    // Saving refresh token
+    // Store refresh token
     user.refreshTokens.push(refreshToken);
     await user.save();
 
-    //setting cookies
+    // Set secure cookies
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 15 * 60 * 1000,
+      sameSite: "strict",
+      maxAge: 60 * 60 * 1000, // 1 hour
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
     res.status(200).json({
@@ -100,24 +118,22 @@ export const login = async (req, res) => {
   }
 };
 
+/**
+ * Handle user logout
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
 export const logout = async (req, res) => {
   try {
-    const refreshToken = req.cookies.refreshToken; // Get token from cookies
-    if (!refreshToken) {
-      return res.status(400).json({ message: "No refresh token found" });
-    }
+    const { refreshToken } = req.cookies;
 
-    // Find user and remove the refresh token
-    const user = await User.findOne({ refreshTokens: refreshToken });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    if (refreshToken) {
+      // Remove refresh token from user's stored tokens
+      await User.updateOne(
+        { refreshTokens: refreshToken },
+        { $pull: { refreshTokens: refreshToken } }
+      );
     }
-
-    // Remove the refresh token from the user's stored tokens
-    user.refreshTokens = user.refreshTokens.filter(
-      (token) => token !== refreshToken
-    );
-    await user.save();
 
     // Clear authentication cookies
     res.clearCookie("accessToken");
